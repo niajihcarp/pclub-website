@@ -3,7 +3,6 @@ layout: post
 title: "Demystifying GPU Computing"
 date: 2026-07-14 22:30:00 +05:30
 author: Arnab Datta
-category: events
 tags:
 - GPU
 - Edge-Computing
