@@ -121,7 +121,7 @@ A cell on the left can store a bit (on or off) indicated by the charge on the ca
 3. Thus we can make multiple reads at different column indices from the data held in the amplifiers. 
 4. Before a new row is fetched, the old row must be written back because the old row was destroyed. 
 
-From the above mechanism we'd expect that reading continuous chunks together is faster, and this is indeed the case. To state the obvious, data access patterns really matters! For example, in most programming languages, 2D arrays are stored row wise. Hence accessing them column wise would be much slower. 
+From the above mechanism we'd expect that reading continuous chunks together is faster, and this is indeed the case. To state the obvious, data access patterns really matter! For example, in most programming languages, 2D arrays are stored row-wise. Hence accessing them column-wise would be much slower. 
 
 ## Why warps?
 Consecutive threads are grouped into 32 threads, so that contiguous data can be accessed simultaneously. Although an A100 GPU can handle 64 warps in a SM, only 4 can run at a time. Suppose a thread reads 8 bytes of data from a particular segment. Therefore we are accessing a chunk of 1024 (32 $\times$ 4 $\times$ 8) bytes, which turns out to be be the size of an entire row in the HBM (RAM).
