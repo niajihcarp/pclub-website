@@ -25,7 +25,7 @@ In this blog, we are going to discuss the architecture of NVIDIA GPUs and CUDA. 
 
 # GPU: The **Throughput** Machine
 ## FLOPS and Bandwidth
-You might have heard a supercomputer's power being stated in terms of FLOPS (FLoating point Operations Per Second). For instance IIT Kanpur's HPC 2013 has a R<sub>max</sub> rating of 344.3 Terra-Flops. However it turns out that memory bandwidth is what we should care about more.
+You might have heard a supercomputer's power being stated in terms of FLOPS (FLoating point Operations Per Second). For instance IIT Kanpur's HPC 2013 has a R<sub>max</sub> rating of 344.3 TeraFLOPS. However it turns out that memory bandwidth is what we should care about more.
 
 <div style="text-align: center;">
   <img src="/images/gpu-computing/compute-intensity.png" alt="Image: Compute Intensity">
@@ -34,10 +34,10 @@ You might have heard a supercomputer's power being stated in terms of FLOPS (FLo
 The compute intensity of 80 in the above example means that at least 80 operations must be done on each bit of data loaded. Otherwise I am not keeping my processor busy, and a cheaper CPU should have sufficed. In fact there are not many algorithms which have so much to do on every piece of data, in fact there is only one extremely important one: matrix multiplication.
 
 ## Latency: The main bottleneck
-Memory latency turns out to be main bottleneck to utilizing all the FLOPS in the machine. Memory latency is the physical time delay between a processor requesting a piece of data and that data being delivered and ready for use. Latency is caused by data being transferred from one bank of transistors to another as it steps through all the logical operations, and turns on and off at the clock rate. To understand why, let's look at a standard **DAXPY** (Double-precision AX+Y) operation running on an **Intel Xeon 8280**.
+Memory latency turns out to be the main bottleneck to utilizing all the FLOPS in the machine. Memory latency is the physical time delay between a processor requesting a piece of data and that data being delivered and ready for use. Latency is caused by data being transferred from one bank of transistors to another as it steps through all the logical operations, and turns on and off at the clock rate. To understand why, let's look at a standard **DAXPY** (Double-precision AX+Y) operation running on an **Intel Xeon 8280**.
 
 ## Case Study on DAXPY
-DAXPY is a very common instruction and processors have a instruction FMA (Fused Multiply Add) that does it in a single instruction. 
+DAXPY is a very common instruction and processors have an instruction FMA (Fused Multiply Add) that does it in a single instruction. 
 ```cpp
 //Pseudocode for DAXPY
 void daxpy(int n, double alpha, double *x, double *y)
@@ -57,7 +57,7 @@ The Intel Xeon 8280 has a memory bandwidth of **131 GB/s** and a loaded latency 
 
 Compilers and hardware employ **pipelining**. The goal is to issue memory loads as early as possible so that the "wait time" is overlapped with useful work, such as the multiplication of a and X. Pipelining is the core of most program optimization. 
 
-**Concurrency** takes helps maintaining multiple operations "in flight" simultaneously. Techniques like **loop unrolling** allow a single thread to issue multiple independent memory requests back-to-back, attempting to fill that latency gap with more data.
+**Concurrency** helps maintain multiple operations "in flight" simultaneously. Techniques like **loop unrolling** allow a single thread to issue multiple independent memory requests back-to-back, attempting to fill that latency gap with more data.
 
 ```cpp
 //Loop unrolling pseudocode
@@ -95,7 +95,7 @@ void daxpy(int n, double alpha, double *x, double *y)
 ## Throughput vs Latency
 CPUs are designed as **latency machines**, allocating a significant portion of their hardware to massive caches to minimise the memory latency. The expectation of the CPU is that a single thread is largely doing all of the work. It is expensive to switch out these threads for another, as it necessitates saving and restoring execution states to off-chip memory. A CPU needs just enough threads to cover the latency. Conversely, GPUs function as **throughput machines** that **hide high latency** through **oversubscription**, keeping thousands of threads alive so that when one execution group stalls, the system always has other work ready to proceed. This strategy is enabled by **zero-overhead context switching**, allowing the hardware to swap execution between threads in a **single clock cycle** without moving data. This efficiency is possible because the GPU features a **massive, persistent register file** that keeps every thread's state resident on the chip throughout its entire lifecycle.
 
-To mitigate any confusion, we draw a simple analogy, between a car and a train. A car is a latency machine, its optimised to take me from point A to point B, but it doesn't really help anybody else. A train on the other hand, can carry lot of people, it stops at a lot of places, and we can have multiple trains along the route. A train is therefore a throughput machine. Latency systems perform horrible if they are oversubscribed: if there are too many cars there is a traffic jam. In contrast, a GPU is underutilized if it is not oversubscribed just as a train company loses money if the trains are not full.
+To mitigate any confusion, we draw a simple analogy between a car and a train. A car is a latency machine, it's optimised to take me from point A to point B, but it doesn't really help anybody else. A train on the other hand, can carry lot of people, it stops at a lot of places, and we can have multiple trains along the route. A train is therefore a throughput machine. Latency systems perform horribly if they are oversubscribed: if there are too many cars there is a traffic jam. In contrast, a GPU is underutilized if it is not oversubscribed just as a train company loses money if the trains are not full.
 
 # GPU Architecture
 
@@ -125,18 +125,18 @@ A cell on the left can store a bit (on or off) indicated by the charge on the ca
 From the above mechanism we'd expect that reading continuous chunks together is faster, and this is indeed the case. To state the obvious, data access patterns really matters! For example, in most programming languages, 2D arrays are stored row wise. Hence accessing them column wise would be much slower. 
 
 ## Why warps?
-Consecutive threads are grouped into 32 threads, so that contiguous data can be accessed simultanously. Although a A100 GPU can handle 64 warps in a SM, only 4 can run at a time. Suppose a thread reads 8 bytes of data from a particular segment. Therefore we are accessing a chunk of 1024 (32 $\times$ 4 $\times$ 8) bytes, which turns out be be the size of an entire row in the HBM (RAM).
+Consecutive threads are grouped into 32 threads, so that contiguous data can be accessed simultaneously. Although an A100 GPU can handle 64 warps in a SM, only 4 can run at a time. Suppose a thread reads 8 bytes of data from a particular segment. Therefore we are accessing a chunk of 1024 (32 $\times$ 4 $\times$ 8) bytes, which turns out to be be the size of an entire row in the HBM (RAM).
 
 # CUDA Framework
 CUDA (Compute Unified Device Architecture) is a proprietary parallel computing platform and programming model developed by NVIDIA, first launched in 2007. CUDA is both a software layer that manages data, giving direct access to the GPU and CPU as necessary, and a library of APIs that enable parallel computation for various needs. In addition to drivers and runtime kernels, the CUDA platform includes compilers, libraries and developer tools to help programmers accelerate their applications.
 
-## CUDA Execution hierarchy
+## CUDA Execution Hierarchy
 
 <div style="text-align: center;">
-  <img src="/images/gpu-computing/cuda-execution-heirarchy.png" alt="Image: CUDA Execution Heirarchy">
+  <img src="/images/gpu-computing/cuda-execution-hierarchy.png" alt="Image: CUDA Execution Hierarchy">
 </div>
 
-Let us discuss CUDA's execution policy. Suppose I want to do some *image processing* on this image of a flower. We divide this data into equal sized blocks comprising a *grid* of work. Now each of the blocks will run independently and in parallel, and data cannot be exchanged between them. Since there are so many blocks, the GPU is oversubscribed by them. The GPU places each of the blocks in a SM, spreading them out among all available SMs. Placing all the blocks in the same SM, would saturate the memory bandwidth of the SM, hence distrubuting the blocks across the SMs is a better strategy. The hardware keeps placing blocks onto a SM until it is full. A SM can fit upto 32 blocks. Once a block finishes executing, it exits and another block is placed in the gap. The multiple threads within a block can run independently, but may synchonize to exchange data. As discussed before threads are grouped into a warp consisting of 32 threads. 
+Let us discuss CUDA's execution policy. Suppose I want to do some *image processing* on this image of a flower. We divide this data into equal sized blocks comprising a *grid* of work. Now each of the blocks will run independently and in parallel, and data cannot be exchanged between them. Since there are so many blocks, the GPU is oversubscribed by them. The GPU places each of the blocks in a SM, spreading them out among all available SMs. Placing all the blocks in the same SM, would saturate the memory bandwidth of the SM, hence distributing the blocks across the SMs is a better strategy. The hardware keeps placing blocks onto a SM until it is full. A SM can fit up to 32 blocks. Once a block finishes executing, it exits and another block is placed in the gap. The multiple threads within a block can run independently, but may synchronize to exchange data. As discussed before threads are grouped into a warp consisting of 32 threads. 
 
 ## Anatomy of a CUDA program
 
@@ -209,7 +209,7 @@ int main() {
 - **blockIdx.x**: "Which block is this?"
 
 ### Running this code
-To run this code on your machine having a NVIDIA gpu, you must download the CUDA Toolkit. This is very easy on Ubuntu/Debian:
+To run this code on your machine having an NVIDIA GPU, you must download the CUDA Toolkit. This is very easy on Ubuntu/Debian:
 ```console
 $~ sudo apt install cuda-toolkit
 ```
@@ -234,7 +234,7 @@ Most AI workloads today live in the cloud, where latency, connectivity, and priv
 Edge GPUs flip that model:
 
 - **Local inference:** Models run right next to the sensors, so decisions happen in milliseconds instead of waiting on a server. 
-- **Privacy:** Raw video, audio, and sensor data stay on‑device, while this not only helps reduce server load, it ensures that the users privacy is ensured as well . 
+- **Privacy:** Raw video, audio, and sensor data stay on‑device, while this not only helps reduce server load, it ensures that the users' privacy is ensured as well . 
 - **Connectivity‑proof:** Works even without constant internet, perfect for drones, autonomous robots, or remote industrial sites. 
 
 At a human level, edge GPUs are what has been pioneering the new generation of robots bringing fast reaction times with powerful compute power.
